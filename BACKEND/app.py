@@ -1,14 +1,13 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS 
 import pandas as pd
 import concurrent.futures
 import numpy as np
 import os
 import tempfile
+from flask import Flask, request, jsonify
+from flask_cors import CORS  
 
 app = Flask(__name__)
 CORS(app) 
-
 class Stock:
     def __init__(self, stock_name):
         self.name = stock_name
@@ -186,6 +185,7 @@ def get_stock_data(name):
     target_stock = next((stock for stock in stocks if stock.name.lower() == name.lower()), None)
     
     if target_stock:
+        
         data = []
         for i, (date, ema_value) in enumerate(target_stock.ema):
             ath_value = target_stock.ath[i][1] if i < len(target_stock.ath) else 'N/A'
