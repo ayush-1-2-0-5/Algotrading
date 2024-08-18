@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -6,21 +6,20 @@ function CalculateIndicators() {
   const [period, setPeriod] = useState('');
   const [athPeriod, setAthPeriod] = useState('');
   const [criteria, setCriteria] = useState('');
-  const [stockName, setStockName] = useState('');  // State for stock name input
-  const [loading, setLoading] = useState(false);  // State for loading indicator
-  const [calculated, setCalculated] = useState(false);  // State to track calculation completion
-  const navigate = useNavigate();  // Hook for navigation
+  const [stockName, setStockName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [calculated, setCalculated] = useState(false);
+  const navigate = useNavigate();
 
   const onCalculate = async () => {
     setLoading(true);
     try {
-      const response = await axios.post('http://127.0.0.1:3001/calculate', {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/calculate`, {
         period,
         ath_period: athPeriod,
         criteria,
       });
 
-      // Display stock name input field if calculation is successful
       setCalculated(true);
       alert(response.data.message);
     } catch (error) {

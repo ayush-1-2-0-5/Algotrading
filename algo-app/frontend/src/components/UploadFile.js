@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 function UploadFile() {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const navigate = useNavigate();  // Initialize useNavigate hook
+  const navigate = useNavigate();
 
   const onFileChange = (e) => {
     setFile(e.target.files[0]);
@@ -22,14 +22,14 @@ function UploadFile() {
     formData.append('file', file);
 
     try {
-      const response = await axios.post('http://127.0.0.1:3001/upload', formData, {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
       alert(response.data.message);
-      setFile(null);  // Clear file input after upload
-      navigate('/calculate');  // Navigate to /calculate on successful upload
+      setFile(null);
+      navigate('/calculate');
     } catch (error) {
       if (error.response) {
         console.error('Error Response:', error.response.data);

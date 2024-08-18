@@ -4,20 +4,20 @@ import axios from 'axios';
 
 function StockData() {
   const { name } = useParams();
-  const navigate = useNavigate();  // Hook for programmatic navigation
+  const navigate = useNavigate();
   const [data, setData] = useState([]);
-  const [error, setError] = useState(null);  // Added error state
-  const [newStockName, setNewStockName] = useState('');  // State for new stock name
-  const tableRef = useRef(null);  // Ref to table element
+  const [error, setError] = useState(null);
+  const [newStockName, setNewStockName] = useState('');
+  const tableRef = useRef(null);
 
   useEffect(() => {
     const fetchStockData = async () => {
       try {
-        const response = await axios.get(`http://127.0.0.1:3001/stock/${name}`);
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/stock/${name}`);
         setData(response.data);
       } catch (error) {
         console.error(error);
-        setError('Error fetching stock data');  
+        setError('Error fetching stock data');
       }
     };
     fetchStockData();
@@ -25,15 +25,14 @@ function StockData() {
 
   const handleStockChange = () => {
     if (newStockName) {
-      navigate(`/stock/${newStockName}`);  // Navigate to the new stock page
+      navigate(`/stock/${newStockName}`);
     }
   };
 
   const goToCalculatePage = () => {
-    navigate('/calculate');  // Navigate to the /calculate page
+    navigate('/calculate');
   };
 
-  // Render error message if there is an error
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -47,7 +46,6 @@ function StockData() {
 
   return (
     <div className="min-h-screen bg-gray-100 p-6 relative">
-      {/* Buttons in the top-right corner */}
       <div className="absolute top-4 right-4 space-x-2">
         <button
           onClick={goToCalculatePage}
@@ -65,7 +63,6 @@ function StockData() {
 
       <h1 className="text-2xl font-bold mb-4">Stock Data for {name}</h1>
 
-      {/* Input for new stock name */}
       <div className="mb-4">
         <label className="block text-gray-700 font-medium mb-1" htmlFor="newStockName">Enter Stock Name</label>
         <input
