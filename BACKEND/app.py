@@ -7,7 +7,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS  
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})  # Allow all origins, adjust as needed
+CORS(app)
 
 # Set the maximum content length for requests to 16 MB
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
@@ -141,7 +141,6 @@ def read_and_process_file(file_path):
             if pd.notna(price):
                 stock.add_price(date, float(price))
         stocks.append(stock)
-
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
@@ -210,7 +209,7 @@ def get_stock_data(name):
                 "Date": date,
                 "EMA": ema_value,
                 "ATH": ath_value,
-                "IsGood": is_good,  # Uncomment if needed
+                # "IsGood": is_good,
                 "Returns12M": returns_12m
             })
         return jsonify(data)
