@@ -141,7 +141,6 @@ def read_and_process_file(file_path):
             if pd.notna(price):
                 stock.add_price(date, float(price))
         stocks.append(stock)
-
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
@@ -166,7 +165,7 @@ def upload_file():
         finally:
             os.remove(file_path)
 
-        return jsonify({"message": "File processed successfully."})
+        return jsonify({"message": f"File processed successfully. {len(stocks)} stocks detected."})
 
 @app.route('/calculate', methods=['POST'])
 def calculate_indicators():
@@ -212,7 +211,7 @@ def get_stock_data(name):
                 "Date": date,
                 "EMA": ema_value,
                 "ATH": ath_value,
-                "IsGood": is_good,
+                # "IsGood": is_good,
                 "Returns12M": returns_12m
             })
         return jsonify(data)
