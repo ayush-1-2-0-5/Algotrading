@@ -7,7 +7,11 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS  
 
 app = Flask(__name__)
-CORS(app) 
+CORS(app)
+
+# Set the maximum content length for requests to 16 MB
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
+
 class Stock:
     def __init__(self, stock_name):
         self.name = stock_name
@@ -140,19 +144,29 @@ def read_and_process_file(file_path):
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    file = request.files['file']
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as temp_file:
-        file_path = temp_file.name
-        file.save(file_path)
-    
-    try:
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future = executor.submit(read_and_process_file, file_path)
-            future.result()
-    finally:
-        os.remove(file_path)
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
 
-    return jsonify({"message": "File processed successfully."})
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    if file:
+        if file.content_length > 16 * 1024 * 1024:  # 16 MB
+            return jsonify({"error": "File is too large"}), 413
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as temp_file:
+            file_path = temp_file.name
+            file.save(file_path)
+
+        try:
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(read_and_process_file, file_path)
+                future.result()
+        finally:
+            os.remove(file_path)
+
+        return jsonify({"message": "File processed successfully."})
 
 @app.route('/calculate', methods=['POST'])
 def calculate_indicators():
@@ -185,7 +199,6 @@ def get_stock_data(name):
     target_stock = next((stock for stock in stocks if stock.name.lower() == name.lower()), None)
     
     if target_stock:
-        
         data = []
         for i, (date, ema_value) in enumerate(target_stock.ema):
             ath_value = target_stock.ath[i][1] if i < len(target_stock.ath) else 'N/A'
@@ -199,7 +212,7 @@ def get_stock_data(name):
                 "Date": date,
                 "EMA": ema_value,
                 "ATH": ath_value,
-                # "IsGood": is_good,
+                "IsGood": is_good,
                 "Returns12M": returns_12m
             })
         return jsonify(data)
