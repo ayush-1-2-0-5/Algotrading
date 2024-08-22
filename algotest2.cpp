@@ -21,7 +21,7 @@
 #define fast_io ios_base::sync_with_stdio(false);cin.tie(NULL)
 using namespace std;
 
-//class statrs
+//class starts
 class Stock {
 private:
     vector<double> calculateEMA(const vector<double>& closePrices, int period) {
@@ -80,9 +80,9 @@ private:
         return ATH;
     }
 
-    bool isFirstOfMonth(const string& date) {
-        return date.substr(0,2) == "01";
-    }
+    // bool isFirstOfMonth(const string& date) {
+    //     return date.substr(0,2) == "01";
+    // }
 
     string extractYYYYMMDD(const string& dateStr) {
     int day, month, year;
@@ -239,7 +239,7 @@ public:
             double currentPrice = prices[i].second;
             double currentEMA = ema[i].second;
             double currentATH = ath[i].second;
-            bool conditionMet = (currentEMA < currentPrice) && (currentPrice < (a/100) * currentATH);
+            bool conditionMet = (currentEMA < currentPrice) && (currentPrice >= (a/100) * currentATH);
             isgood.pb(make_pair(prices[i].first, conditionMet));
         }
     }
@@ -322,7 +322,7 @@ string toLower(const string& str) {
 
 
 
-void readAndProcessFile(const string& filePath, vector<Stock>& stocks) {
+void readAndProcessFile(const string& filePath, vector<Stock>& stocks,int noofstocks,int noofdatapoints) {
     ifstream file(filePath);
     string line, date;
 
@@ -335,7 +335,7 @@ void readAndProcessFile(const string& filePath, vector<Stock>& stocks) {
     vector<string> headers;
     string header;
     size_t stockCount = 0;
-    while (getline(headerStream, header, ',') && stockCount < 501) {
+    while (getline(headerStream, header, ',') && stockCount < noofstocks) {
         headers.pb(header);
         stockCount++;
     }
@@ -344,7 +344,7 @@ void readAndProcessFile(const string& filePath, vector<Stock>& stocks) {
         stocks.emplace_back(headers[i]);
     }
     size_t rowCount = 0;
-    while (getline(file, line) && rowCount <= 2350) {
+    while (getline(file, line) && rowCount <= noofdatapoints) {
         stringstream ss(line);
         if (getline(ss, date, ',')) {
             for (size_t i = 1; i < headers.size(); ++i) {
@@ -564,6 +564,23 @@ string find_futuredate( map<pair<int,int>,vector<int>> mappp,string date)
      return "";
 };
 
+
+string find_lasttradingday( map<pair<int,int>,vector<int>> mappp,string date)
+{
+    int day, month, year;
+    extractDateComponents(date, day, month, year);
+      auto it = mappp.find({year, month});
+    if (it != mappp.end()) {
+        int lastTradingDay = findLastTradingDay(it->second);
+        if (lastTradingDay != -1) {
+            return formatDate(lastTradingDay, month, year);
+        }
+    }
+     return "";
+};
+
+
+
 string convertToYYYYMMDD(const string& date) {
     stringstream ss(date);
     string day, month, year;
@@ -708,6 +725,8 @@ vector<pair<string, double>> fun6(map<string, vector<pair<bool, string>>> emache
             if (futureData2.size())
                 cout << "Future Date2: " << convertToYYYYMMDD(bufferdate) << " sizeoffutureData " << futureData2.size() << endl;
 
+             
+
             cout << endl;
 
             for (const auto& data : futureData) {
@@ -794,8 +813,12 @@ vector<pair<string, double>> fun6(map<string, vector<pair<bool, string>>> emache
             portfoliostocks = temp;
         }
         if(avaragereturns!=0)
-        answer.pb({future_date,avaragereturns});
+        {
+           string lasttradingday=find_lasttradingday(mappp,convertToYYYYMMDD(future_date));
+       
+        answer.pb({lasttradingday,avaragereturns});
         bufferdate = future_date;
+        }
     }
     return answer;
   }
@@ -825,8 +848,17 @@ vector<pair<string, double>> fun6(map<string, vector<pair<bool, string>>> emache
 int main() {
   fast_io;
     vector<Stock> stocks;
+   
     string filePath = "E:/Desktop/algotrading/Nifty 500 v1 Price.csv";
-    future<void> fileProcessingFuture = async(launch::async, readAndProcessFile, filePath, ref(stocks));
+
+     int noofstocks;
+    int noofdatapoints;
+    cout<<"Enter no of Stocks you have in your csv file:"<<endl;
+     cin>>noofstocks;
+    cout<<"Enter no of Data points you have :"<<endl;
+    cin>>noofdatapoints;
+     cout<<"reading data from csv file..."<<endl;
+    future<void> fileProcessingFuture = async(launch::async, readAndProcessFile, filePath, ref(stocks),noofstocks+1,noofdatapoints+1);
     fileProcessingFuture.get();
     int period;
     double c;
@@ -1011,9 +1043,6 @@ int main() {
     //     cout << endl; // Separate each month's data with a newline
     // }
 
-
-
-
 //  for (const auto& entry : datewisedatafor1monthsreturns) {
 //         const string& date = entry.first;
 //         const vector<pair<double, string>>& returnsAndStocks = entry.second;
@@ -1030,10 +1059,15 @@ int main() {
      cout<<"Enter the no of Stocks you Want in Your Portfolio:"<<endl;
      cin>>noofstocks;
      
-     vector<pair<string,double>> portfolioreturns=fun6(emacheck,datewisedatafor1monthsreturns,noofstocks,mappp);    
-     double initialAmount = 100.0;
-    printPortfolioReturns(portfolioreturns, initialAmount);
-    }
+     vector<pair<string,double>> portfolioreturns=fun6(emacheck,datewisedatafor1monthsreturns,noofstocks,mappp);  
+
+     double initialAmount;
+     cout<<"enter how much money you want to invest: "<<endl;
+     cin>>initialAmount;
+
+     cout<<"your initial investment money is: "<<initialAmount<<endl<<endl;
+     printPortfolioReturns(portfolioreturns, initialAmount);
+     }
     return 0;
 }
 
