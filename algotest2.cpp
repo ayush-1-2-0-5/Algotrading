@@ -97,6 +97,8 @@ private:
     return formattedDate.str();
 }
 
+
+
 vector<pair<string, double>> calculate12MReturns(const vector<double>& closePrices, const vector<string>& dates) {
     vector<pair<string, double>> returns; 
     vector<string> formattedDates;
@@ -303,21 +305,22 @@ void return12months() {
 }
 };
 
-
-
-
-
-
-
 //class ends
 
 
-string toLower(const std::string& str) {
+
+
+
+
+//helperfunction used in int main
+string toLower(const string& str) {
     string lowerStr = str;
     transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
+                   [](unsigned char c) { return tolower(c); });
     return lowerStr;
 }
+
+
 
 void readAndProcessFile(const string& filePath, vector<Stock>& stocks) {
     ifstream file(filePath);
@@ -327,7 +330,6 @@ void readAndProcessFile(const string& filePath, vector<Stock>& stocks) {
         cerr << "Error opening file." << endl;
         return;
     }
-
     getline(file, line);
     stringstream headerStream(line);
     vector<string> headers;
@@ -372,6 +374,8 @@ void readAndProcessFile(const string& filePath, vector<Stock>& stocks) {
     file.close();
 }
 
+
+
 vector<pair<double,pair<string,string>>> monthreturns12forastock(Stock stocks){
 vector<pair<double,pair<string,string>>>ans ;
     string name=stocks.name;
@@ -384,6 +388,8 @@ vector<pair<double,pair<string,string>>>ans ;
     }
 return ans;
 }
+
+
 
 vector<pair<pair<double,double>,pair<string,string>>> monthreturns1forastock(Stock stocks){
 vector<pair<pair<double,double>,pair<string,string>>>ans ;
@@ -399,6 +405,33 @@ vector<pair<pair<double,double>,pair<string,string>>>ans ;
     }
 return ans;
 }
+
+
+string convertToDDMMYYYY(const string& date) {
+    stringstream ss(date);
+    string year, month, day;
+    getline(ss, year, '-');
+    getline(ss, month, '-');
+    getline(ss, day, '-');
+    return day + "-" + month + "-" + year;
+ }
+
+
+ 
+string extractYYYYMMDD(const string& dateStr) {
+    int day, month, year;
+    char dash;
+    stringstream ss(dateStr);
+    ss >> day >> dash >> month >> dash >> year;
+    stringstream formattedDate;
+    formattedDate << setw(4) << setfill('0') << year
+                  << setw(2) << setfill('0') << month
+                  << setw(2) << setfill('0') << day;
+
+    return formattedDate.str();
+}
+
+
 
 map<string,vector<pair<double,string>>> fun1(vector<vector<pair<double,pair<string,string>>>> data){
 
@@ -416,6 +449,8 @@ map<string,vector<pair<double,string>>> fun1(vector<vector<pair<double,pair<stri
        }
        return mpp;
 }
+
+
 
 
 map<string, vector<pair<double, string>>> fun2(map<string, vector<pair<double, string>>> datewisedatafor12monthsreturns) {
@@ -444,6 +479,10 @@ map<string, vector<pair<double, string>>> fun2(map<string, vector<pair<double, s
 
     return mpp;
 }
+
+
+
+
 map<string, vector<pair<double, string>>> fun3(int percent, map<string, vector<pair<double, string>>> sorteddata) {
     map<string, vector<pair<double, string>>> ans;
      for(auto it: sorteddata)
@@ -466,27 +505,7 @@ map<string, vector<pair<double, string>>> fun3(int percent, map<string, vector<p
     return ans;
 }
 
-    string convertToDDMMYYYY(const string& date) {
-    stringstream ss(date);
-    string year, month, day;
-    getline(ss, year, '-');
-    getline(ss, month, '-');
-    getline(ss, day, '-');
-    return day + "-" + month + "-" + year;
- }
 
-     string extractYYYYMMDD(const string& dateStr) {
-    int day, month, year;
-    char dash;
-    stringstream ss(dateStr);
-    ss >> day >> dash >> month >> dash >> year;
-    stringstream formattedDate;
-    formattedDate << setw(4) << setfill('0') << year
-                  << setw(2) << setfill('0') << month
-                  << setw(2) << setfill('0') << day;
-
-    return formattedDate.str();
-}
 
 map<pair<int, int>, vector<int>> createDateMap(const vector<string>& dates) {
     map<pair<int, int>, vector<int>> dateMap;
@@ -499,6 +518,7 @@ map<pair<int, int>, vector<int>> createDateMap(const vector<string>& dates) {
     }
     return dateMap;
 }
+
 
 void extractDateComponents(const string& dateStr, int& day, int& month, int& year) {
     stringstream ss(dateStr);
@@ -605,20 +625,17 @@ map<string, vector<pair<bool, string>>> fun4(map<string, vector<pair<double, str
                     }
                 }
             }
-
             answer[date] = tmp;
         }));
     }
     for (auto& fut : futures) {
         fut.get();
     }
-
     return answer;
 }
 
 
 map<string,vector<pair<pair<double,double>,string>>> fun5(vector<vector<pair<pair<double,double>,pair<string,string>>>> data){
-
     map<string,vector<pair<pair<double,double>,string>>> mpp;
        for(int i=0;i<data.size();++i)
        {
@@ -663,131 +680,143 @@ string finddate(string currdate, map<pair<int, int>, vector<int>> mappp) {
     }
 }
 
-string finddate2(string currdate, map<pair<int, int>, vector<int>> mappp) {
-    int currYear, currMonth, currDay;
-    parseDate(currdate, currYear, currMonth, currDay);
-    int targetYear = currYear;
-    int targetMonth = currMonth + 13;
 
-    if (targetMonth > 12) {
-        targetYear += targetMonth / 12;
-        targetMonth = targetMonth % 12;
-        if (targetMonth == 0) {
-            targetMonth = 12;
-            --targetYear;
-        }
-    }
-    auto key = make_pair(targetYear, targetMonth);
-    if (mappp.find(key) != mappp.end()) {
-        int firstDay = mappp[key].front();
-        return formatDate(firstDay, targetMonth, targetYear);
-    } else {
-        return "Date not found";
-    }
-}
-
-map<string, pair<double, string>> fun6(map<string, vector<pair<bool, string>>> emacheck,map<string, vector<pair<pair<double,double>, string>>> datewisedatafor1monthsreturns,int noostocks,map<pair<int, int>, vector<int>> mappp) 
-{
-    map<string, pair<double, string>> answer;
-
+vector<pair<string, double>> fun6(map<string, vector<pair<bool, string>>> emacheck,map<string, vector<pair<pair<double,double>, string>>> datewisedatafor1monthsreturns,int noofstocks,map<pair<int, int>, vector<int>> mappp) 
+   {
+   vector<pair<string, double>> answer;
     set<string> portfoliostocks;
-    string bufferdate="";
-   
-       for(auto it:emacheck)
-       {
+    string bufferdate = "";
 
+
+    
+    for (auto it : emacheck) {
         string backtestdate = it.first;
         vector<pair<bool, string>>& backtestdata = it.second;
-        vector<pair<pair<double,double>, string>> futureData2;
+        vector<pair<pair<double, double>, string>> futureData2;
         string future_date = finddate(backtestdate, mappp);
-         
-        // string future_date=finddate2(backtestdate,mappp);
-        map<string,double> returnsmap;
-        map<string,double> continuedreturnsmap;
+        map<string, double> returnsmap;
+        map<string, double> continuedreturnsmap;
+        double sum=0;
+        double avaragereturns=0;
+
         if (datewisedatafor1monthsreturns.find(convertToYYYYMMDD(future_date)) != datewisedatafor1monthsreturns.end()) {
-           
-            vector<pair<pair<double,double>, string>>& futureData = datewisedatafor1monthsreturns[convertToYYYYMMDD(future_date)];
+            vector<pair<pair<double, double>, string>>& futureData = datewisedatafor1monthsreturns[convertToYYYYMMDD(future_date)];
+            if (bufferdate.size())
+                futureData2 = datewisedatafor1monthsreturns[convertToYYYYMMDD(bufferdate)];
 
-            if(bufferdate.size())
-             futureData2 = datewisedatafor1monthsreturns[convertToYYYYMMDD(bufferdate)];
+            cout << "Future Date: " << convertToYYYYMMDD(future_date) << " sizeoffutureData " << futureData.size() << endl;
+            if (futureData2.size())
+                cout << "Future Date2: " << convertToYYYYMMDD(bufferdate) << " sizeoffutureData " << futureData2.size() << endl;
 
-            cout << "Future Date: " << convertToYYYYMMDD(future_date) << " sizeoffutureData " << futureData.size()<<endl;
-            if(futureData2.size())
-            cout << "Future Date2: " << convertToYYYYMMDD(bufferdate) << " sizeoffutureData " << futureData2.size()<<endl;
-
-            cout<<endl;
+            cout << endl;
 
             for (const auto& data : futureData) {
-                returnsmap[data.second]=data.first.first;
-                 
+                returnsmap[data.second] = data.first.first;
             }
-            for(const auto&data:futureData2)
+            for (const auto& data : futureData2) {
+                continuedreturnsmap[data.second] = data.first.second;
+            }
+        }
+  
+      int a=noofstocks;
+        if (portfoliostocks.empty()) {
+            auto itr = it.second;
+            cout << endl;
+
+            for (auto i : itr) {
+                if(a>0)
+                {
+                string stock = i.second;
+                bool c = i.first;
+                double returnss = returnsmap[stock];
+                if (c) {
+                    portfoliostocks.insert(stock);
+                    cout << "stock: " << stock << " returns : " << returnss << endl;
+                    a--;
+                    sum+=returnss;
+                }
+                }
+                else 
+                {
+                    break;
+                }
+            }
+
+            if(noofstocks>0)
+            avaragereturns=sum/noofstocks;
+ 
+
+            cout << endl << endl;
+     
+            cout<<"Avereage returns on end of date: "<<future_date<< " is : "<<avaragereturns<<endl;
+            cout << endl << endl;
+            }
+            
+            
+        else {
+            auto itr = it.second;
+            cout << endl;
+            set<string> temp;
+            for (auto i : itr) {
+                if(a>0)
+                {
+                string stock = i.second;
+                bool c = i.first;
+
+                if (portfoliostocks.find(stock) != portfoliostocks.end()) {
+                    double returnss = continuedreturnsmap[stock];
+                    if (c) {
+                        cout << "stock: " << stock << " returns : " << returnss << endl;
+                        temp.insert(stock);
+                        a--;
+                         sum+=returnss;
+                    }
+                } else {
+                    double returnss = returnsmap[stock];
+                    if (c) {
+                        cout << "stock: " << stock << " returns : " << returnss << endl;
+                        temp.insert(stock);
+                        a--;
+                         sum+=returnss;
+                    }
+                }
+            }
+            else
             {
-              continuedreturnsmap[data.second]=data.first.second;
+                break;
             }
+           }
+            if(noofstocks>0)
+            avaragereturns=sum/noofstocks;
+             cout << endl << endl;
+            cout<<"Average returns on end of date: "<<future_date<< " is : "<<avaragereturns<<endl;
+            cout << endl << endl;
+            portfoliostocks = temp;
         }
-    if(portfoliostocks.empty())
-         {
-        auto itr=it.second;
-        cout<<endl;
-        for(auto i:itr)
-        {
-            string stock=i.second;
-           
-            bool c=i.first;
-             double returnss=returnsmap[stock];
-             if(c)
-             {
-            portfoliostocks.insert(stock);
-            cout<<"stock: "<<stock<<" returns : "<< returnss<<endl;
-             }
-        
-        }
-         }
-
-         else
-         {
-             auto itr=it.second;
-             
-             cout<<endl;
-             for (auto i:itr)
-             {
-                 set<string> temp;
-
-                string stock=i.second;
-                bool c=i.first;
-                temp.insert(stock);
-                if(portfoliostocks.find(stock)!=portfoliostocks.end())
-                {
-                       double returnss=continuedreturnsmap[stock];
-                       if(c)
-                       {
-                         cout<<"stock: "<<stock<<" returns : "<< returnss<<endl;
-                       }
-                }
-                else
-                {
-                      double returnss=returnsmap[stock];
-                          if(c)
-                       {
-                         cout<<"stock: "<<stock<<" returns : "<< returnss<<endl;
-                       }
-                }
-                portfoliostocks=temp;
-
-             }
-         }
-
-        bufferdate=future_date;
-       }
-        return answer;
+        if(avaragereturns!=0)
+        answer.pb({future_date,avaragereturns});
+        bufferdate = future_date;
     }
+    return answer;
+  }
+
    
+   void printPortfolioReturns(const std::vector<std::pair<std::string, double>>& portfolioreturns, double initialAmount) {
+    double amount = initialAmount;
 
+    std::cout << std::setw(15) << "Date" << std::setw(15) << "Return (%)" << std::setw(20) << "Portfolio Value" << std::endl;
+    std::cout << "-----------------------------------------------------------" << std::endl;
 
+    for (const auto& entry : portfolioreturns) {
+        double returnPercentage = entry.second;
+        amount += (amount * returnPercentage / 100.0);
 
-
-
+        std::cout << std::setw(15) << entry.first 
+                  << std::setw(15) << returnPercentage 
+                  << std::setw(20) << amount 
+                  << std::endl;
+    }
+}
 
 
 
@@ -997,18 +1026,13 @@ int main() {
 //         }
 //         cout << endl; 
 //     }
-
-
-int noofstocks=30;
-
-
-     map<string,pair<double,string>> tempdata=fun6(emacheck,datewisedatafor1monthsreturns,noofstocks,mappp);
+     int noofstocks;
+     cout<<"Enter the no of Stocks you Want in Your Portfolio:"<<endl;
+     cin>>noofstocks;
      
-
-
-
-     cout<<"exited into"<<endl;
-
+     vector<pair<string,double>> portfolioreturns=fun6(emacheck,datewisedatafor1monthsreturns,noofstocks,mappp);    
+     double initialAmount = 100.0;
+    printPortfolioReturns(portfolioreturns, initialAmount);
     }
     return 0;
 }
