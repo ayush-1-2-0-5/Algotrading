@@ -4,6 +4,7 @@
 #include <cmath>
 #include <iomanip>
 #include <ctime>
+#include <mutex>
 #define ll long long
 #define pb push_back
 #define vi vector<int>
@@ -21,7 +22,7 @@
 #define fast_io ios_base::sync_with_stdio(false);cin.tie(NULL)
 using namespace std;
 
-//class starts
+
 class Stock {
 private:
     vector<double> calculateEMA(const vector<double>& closePrices, int period) {
@@ -56,7 +57,7 @@ private:
     return day + "-" + month + "-" + year;
  }
 
-    vector<double> calculateATH(const vector<double>& closePrices, int period) {
+     vector<double> calculateATH(const vector<double>& closePrices, int period) {
         vector<double> ATH;
         if (closePrices.size() < period) {
             cerr << "Error: Not enough data to calculate ATH" << endl;
@@ -80,9 +81,6 @@ private:
         return ATH;
     }
 
-    // bool isFirstOfMonth(const string& date) {
-    //     return date.substr(0,2) == "01";
-    // }
 
     string extractYYYYMMDD(const string& dateStr) {
     int day, month, year;
@@ -100,7 +98,7 @@ private:
 
 
 vector<pair<string, double>> calculate12MReturns(const vector<double>& closePrices, const vector<string>& dates) {
-    vector<pair<string, double>> returns; 
+    vector<pair<string, double>> returns;
     vector<string> formattedDates;
     map<pair<int, int>, vector<pair<int, double>>> dataMap;
     for (const auto& date : dates) {
@@ -186,21 +184,113 @@ vector<pair<string, pair<double,double>>> calculate1MReturns(const vector<double
 }
 
 
+string convertDateFormat(const string& date) {
+    stringstream dateStream(date);
+    string month, day, year;
+    
+    if (getline(dateStream, month, '-') &&
+        getline(dateStream, day, '-') &&
+        getline(dateStream, year)) {
+        return day + '-' + month + '-' + year;
+    } else {
+        cerr << "Error parsing date: " << date << endl;
+        return ""; 
+    }
+}
+
+
+  vector<pair<string,long long int>> ptimesvolume( vector<pair<string, double>> prices,    vector<pair<string,double>> volumes)
+  {
+      vector<pair<string,long long int>> answer;
+     int j=0;
+      for(auto it: volumes)
+      {
+          if(convertDateFormat(it.first)==prices[0].first)
+          break;
+          else
+          j++;
+      }
+int i=0;
+    while(j!=-3 && i<prices.size() && j<volumes.size())
+    {
+        auto it=volumes[j];
+        auto itp=prices[i];
+        if(it.first.length()==0)
+        {
+            j=-3;
+        }
+        else if(convertDateFormat(it.first)!=itp.first)
+        {
+            cout<<" error in date match at idx"<< i <<endl;
+            i++;
+            j++;
+        }
+        else
+        {
+            answer.pb({itp.first,itp.second*it.second});
+            i++;
+            j++;
+        }
+    }
+    cout<<j<<endl;
+      return answer;
+  }
+
+
 
 public:
     string name;
     vector<pair<string, double>> prices; 
+    vector<pair<string,double>> volumes;
     vector<pair<string, double>> ema;
-    vector<pair<string, double>> ath;   
+    vector<pair<string, double>> ath;
     vector<pair<string, bool>> isgood;
     vector<pair<string, double>> returns12M;    
     vector<pair<string,double>>monthwisereturnsforstock;
      vector<pair<string,pair<double, double>>> returns1M;
      vector<pair<string,pair<double,double>>>monthwisereturns1Mforstock;
+     vector<pair<string,long long int>> priceintovolume;
+
+     void testfun()
+     {
+        priceintovolume=ptimesvolume(prices,volumes);
+     }
+
+
+     void displayVolumes() const {
+    cout << "Stock: " << name << endl;
+    for (const auto& entry : volumes) {
+        cout << "Date: " << entry.first << ", Volume: " << entry.second << endl;
+    }
+}
+
+void displayPrices() const {
+    cout << "Stock: " << name << endl;
+    for (const auto& entry : prices) {
+        cout << "Date: " << entry.first << ", Price: " << entry.second << endl;
+    }
+}
+
+int merge(const Stock& other) {
+    if(name!=other.name)
+    {
+        cout<<-1<<endl;
+        return -1;
+    }
+    for (auto it = other.prices.begin(); it != other.prices.end(); ++it) {
+        const string& date = it->first;
+        double price = it->second;
+        addPrice(date, price);
+    }
+    return 1;
+}
 
     Stock(const string& stockName) : name(stockName) {}
     void addPrice(const string& date, double price) {
         prices.pb(make_pair(date, price));
+    }
+       void addVolume(const string& date, long long volume) {
+        volumes.pb(make_pair(date, volume));
     }
 
     void calculateEMAForStock(int period) {
@@ -224,25 +314,12 @@ public:
             dates.pb(entry.first);
             closePrices.pb(entry.second);
         }
-        vector<double> athValues = calculateATH(closePrices, period);
+        vector<double> athValues = calculateATH(closePrices,period);
         for (size_t i = 0; i < athValues.size(); ++i) {
             ath.pb(make_pair(dates[i], athValues[i]));
         }
     }
 
-    void IsEMAcriteria(double a) {
-        for (size_t i = 0; i < prices.size(); ++i) {
-            if (i <= ema.size() || i <= ath.size()) {
-                isgood.pb(make_pair(prices[i].first, false));
-                continue;
-            }
-            double currentPrice = prices[i].second;
-            double currentEMA = ema[i].second;
-            double currentATH = ath[i].second;
-            bool conditionMet = (currentEMA < currentPrice) && (currentPrice >= (a/100) * currentATH);
-            isgood.pb(make_pair(prices[i].first, conditionMet));
-        }
-    }
 
 void return12months() {
     vector<double> closePrices;
@@ -308,70 +385,12 @@ void return12months() {
 //class ends
 
 
-
-
-
-
-//helperfunction used in int main
+//helperfunctions used in int main
 string toLower(const string& str) {
     string lowerStr = str;
     transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(),
                    [](unsigned char c) { return tolower(c); });
     return lowerStr;
-}
-
-
-
-void readAndProcessFile(const string& filePath, vector<Stock>& stocks,int noofstocks,int noofdatapoints) {
-    ifstream file(filePath);
-    string line, date;
-
-    if (!file.is_open()) {
-        cerr << "Error opening file." << endl;
-        return;
-    }
-    getline(file, line);
-    stringstream headerStream(line);
-    vector<string> headers;
-    string header;
-    size_t stockCount = 0;
-    while (getline(headerStream, header, ',') && stockCount < noofstocks) {
-        headers.pb(header);
-        stockCount++;
-    }
-    stocks.clear();
-    for (size_t i = 1; i < headers.size(); ++i) {
-        stocks.emplace_back(headers[i]);
-    }
-    size_t rowCount = 0;
-    while (getline(file, line) && rowCount <= noofdatapoints) {
-        stringstream ss(line);
-        if (getline(ss, date, ',')) {
-            for (size_t i = 1; i < headers.size(); ++i) {
-                string priceStr;
-                if (getline(ss, priceStr, ',')) {
-                    priceStr.erase(remove(priceStr.begin(), priceStr.end(), ' '), priceStr.end());
-
-                    if (!priceStr.empty() && isdigit(priceStr[0])) {
-                        try {
-                            double price = stod(priceStr);
-                            stocks[i - 1].addPrice(date, price);
-                        } catch (const exception& e) {
-                            cerr << "Error converting price for date: " << date << " - " << e.what() << endl;
-                        }
-                    } else {
-                        cerr << "Invalid price or empty line for date: " << date << endl;
-                    }
-                } else {
-                    cerr << "Error extracting price for date: " << date << endl;
-                }
-            }
-            rowCount++;
-        } else {
-            cerr << "Error extracting date from line: " << line << endl;
-        }
-    }
-    file.close();
 }
 
 
@@ -431,8 +450,6 @@ string extractYYYYMMDD(const string& dateStr) {
     return formattedDate.str();
 }
 
-
-
 map<string,vector<pair<double,string>>> fun1(vector<vector<pair<double,pair<string,string>>>> data){
 
     map<string,vector<pair<double,string>>> mpp;
@@ -443,6 +460,8 @@ map<string,vector<pair<double,string>>> fun1(vector<vector<pair<double,pair<stri
               auto it=data[i][j];
               double returns=it.first*100;
               string date=it.second.first;
+
+
               string name=it.second.second;
               mpp[date].pb({returns,name});
            }
@@ -538,6 +557,11 @@ int findLastTradingDay(const vector<int>& days) {
     return days.back(); 
 }
 
+int findFirstTradingDay(const vector<int>& days) {
+    if (days.empty()) return -1;
+    return days.front(); 
+}
+
 string find_futuredate( map<pair<int,int>,vector<int>> mappp,string date)
 {
     int day, month, year;
@@ -554,6 +578,40 @@ string find_futuredate( map<pair<int,int>,vector<int>> mappp,string date)
      upcomingmonth=month-1;
      upcomingyear=year+1;
     }
+      auto it = mappp.find({upcomingyear, upcomingmonth});
+    if (it != mappp.end()) {
+        int lastTradingDay = findLastTradingDay(it->second);
+        if (lastTradingDay != -1) {
+            return formatDate(lastTradingDay, upcomingmonth, upcomingyear);
+        }
+    }
+     return "";
+};
+
+string find_futuredate2( map<pair<int,int>,vector<int>> mappp,string date)
+{
+    int day, month, year;
+    extractDateComponents(date, day, month, year);
+    int upcomingmonth,upcomingyear;
+ upcomingmonth=month;
+ upcomingyear=year+1;
+      auto it = mappp.find({upcomingyear, upcomingmonth});
+    if (it != mappp.end()) {
+        int firstTradingDay = findFirstTradingDay(it->second);
+        if (firstTradingDay != -1) {
+            return formatDate(firstTradingDay, upcomingmonth, upcomingyear);
+        }
+    }
+     return "";
+};
+
+string find_futuredate3( map<pair<int,int>,vector<int>> mappp,string date)
+{
+    int day, month, year;
+    extractDateComponents(date, day, month, year);
+    int upcomingmonth,upcomingyear;
+ upcomingmonth=month;
+ upcomingyear=year+1;
       auto it = mappp.find({upcomingyear, upcomingmonth});
     if (it != mappp.end()) {
         int lastTradingDay = findLastTradingDay(it->second);
@@ -589,66 +647,99 @@ string convertToYYYYMMDD(const string& date) {
     getline(ss, year, '-');
     return year + "-" + month + "-" + day;
 }
-    
-map<string, vector<pair<bool, string>>> fun4(map<string, vector<pair<double, string>>> &topperccentstocksdatewise, vector<Stock> stocks) {
-    cout << "test line 1" << endl;
+
+long long findavgpriceintovol(vector<pair<string, long long>> priceintovol,int start,int end)
+{
+    // cout<<start <<" "<<end<<endl;
+   unsigned long long ans=0;
+   int nooftradingdays=end-start;
+//    cout<<nooftradingdays<<endl;
+    for(int i=start;i<=end;++i)
+    {
+        ans+=priceintovol[i].second/nooftradingdays;
+    }
+   if(nooftradingdays>=14 && nooftradingdays<=25)
+    return ans;
+
+    else return 100000001;
+}
+
+  
+map<string, vector<pair<bool, string>>> fun4 (
+    map<string, vector<pair<double, string>>> &topperccentstocksdatewise, 
+    vector<Stock> stocks, 
+    int criteriaforath
+) {
     map<string, vector<pair<bool, string>>> answer;
     map<string, int> dateToIndexMap;
-    vector<pair<string, double>> p = stocks[0].prices;
-
+    vector<pair<string, double>> p = stocks[0].prices; 
     vector<string> dates;  
+    
     for (int i = 0; i < p.size(); ++i) {
         string date = convertToDDMMYYYY(p[i].first);
-        dateToIndexMap[date] = i;
-        dates.pb(p[i].first);
+        dateToIndexMap[date] = i; 
+        dates.push_back(p[i].first); 
     }
- 
+    
     map<pair<int,int>,vector<int>> mappp = createDateMap(dates);
-
+    
     map<string, string> futuredates;
+    map<string, pair<string, string>> futuredates2;
 
     for (auto& itr : topperccentstocksdatewise) {
         string currdate = itr.first;
-        string newdate = find_futuredate(mappp, currdate);
-        futuredates[currdate] = newdate;
+        string newdate = find_futuredate(mappp, currdate); 
+        string newdate1 = find_futuredate2(mappp, currdate); 
+        string newdate2 = find_futuredate3(mappp, currdate); 
+        
+        futuredates[currdate] = newdate; 
+        futuredates2[currdate] = make_pair(newdate1, newdate2); 
     }
 
-    int pointer = 0;
-    vector<future<void>> futures;
+    // Process each date sequentially
     for (auto it : topperccentstocksdatewise) {
-        futures.push_back(async(launch::async, [&answer, &dateToIndexMap, &stocks, it, mappp, futuredates]() {
-            string date = it.first;
-            string futureDate = futuredates.at(date);
-            vector<pair<bool, string>> tmp;
-            int j = -1;
-            if (dateToIndexMap.find(convertToYYYYMMDD(futureDate)) != dateToIndexMap.end()) {
-                j = dateToIndexMap[convertToYYYYMMDD(futureDate)];
-            }
-            if (j == -1) return;
+        string date = it.first; 
+        int i1 = -1, j1 = -1;
+        auto datess = futuredates2.at(date);
+        if (dateToIndexMap.find(convertToYYYYMMDD(datess.first)) != dateToIndexMap.end() && 
+            dateToIndexMap.find(convertToYYYYMMDD(datess.second)) != dateToIndexMap.end()) {
+            i1 = dateToIndexMap[convertToYYYYMMDD(datess.first)]; 
+            j1 = dateToIndexMap[convertToYYYYMMDD(datess.second)]; 
+        }
 
-            for (const auto& stockPair : it.second) {
-                string stockName = stockPair.second;
-                auto itr = find_if(stocks.begin(), stocks.end(), [&stockName](const Stock& stock) {
-                    return stock.name == stockName;
-                });
+        string futureDate = futuredates.at(date); 
+        vector<pair<bool, string>> tmp;
 
-                if (itr != stocks.end()) {
-                    auto prices = itr->prices;
-                    auto ema = itr->ema;
-                    if (prices[j].second > ema[j].second) {
-                        tmp.push_back({true, stockName});
-                    } else {
-                        tmp.push_back({false, stockName});
-                    }
-                }
+        int j = -1;
+        if (dateToIndexMap.find(convertToYYYYMMDD(futureDate)) != dateToIndexMap.end()) {
+            j = dateToIndexMap[convertToYYYYMMDD(futureDate)]; 
+        }
+
+        if (j == -1 || j1 == -1 || i1 == -1) continue;
+         
+        for (const auto& stockPair : it.second) {
+            string stockName = stockPair.second;
+
+            auto itr = find_if(stocks.begin(), stocks.end(), [&stockName](const Stock& stock) {
+                return stock.name == stockName;
+            });
+
+            if (itr != stocks.end()) {
+                auto prices = itr->prices; 
+                auto ema = itr->ema; 
+                auto ath = itr->ath; 
+                auto priceintovol = itr->priceintovolume; 
+                
+                long long avg = findavgpriceintovol(priceintovol, i1, j1);
+                
+                bool cond = (prices[j].second > ema[j].second && prices[j].second >= ath[j].second * criteriaforath / 100 && avg >= 10000001);
+                tmp.push_back({cond, stockName});
             }
-            answer[date] = tmp;
-        }));
+        }
+        answer[date] = tmp; 
     }
-    for (auto& fut : futures) {
-        fut.get();
-    }
-    return answer;
+
+    return answer; 
 }
 
 
@@ -702,10 +793,7 @@ vector<pair<string, double>> fun6(map<string, vector<pair<bool, string>>> emache
    {
    vector<pair<string, double>> answer;
     set<string> portfoliostocks;
-    string bufferdate = "";
-
-
-    
+    string bufferdate = "";  
     for (auto it : emacheck) {
         string backtestdate = it.first;
         vector<pair<bool, string>>& backtestdata = it.second;
@@ -715,20 +803,10 @@ vector<pair<string, double>> fun6(map<string, vector<pair<bool, string>>> emache
         map<string, double> continuedreturnsmap;
         double sum=0;
         double avaragereturns=0;
-
         if (datewisedatafor1monthsreturns.find(convertToYYYYMMDD(future_date)) != datewisedatafor1monthsreturns.end()) {
             vector<pair<pair<double, double>, string>>& futureData = datewisedatafor1monthsreturns[convertToYYYYMMDD(future_date)];
             if (bufferdate.size())
                 futureData2 = datewisedatafor1monthsreturns[convertToYYYYMMDD(bufferdate)];
-
-            cout << "Future Date: " << convertToYYYYMMDD(future_date) << " sizeoffutureData " << futureData.size() << endl;
-            if (futureData2.size())
-                cout << "Future Date2: " << convertToYYYYMMDD(bufferdate) << " sizeoffutureData " << futureData2.size() << endl;
-
-             
-
-            cout << endl;
-
             for (const auto& data : futureData) {
                 returnsmap[data.second] = data.first.first;
             }
@@ -740,8 +818,6 @@ vector<pair<string, double>> fun6(map<string, vector<pair<bool, string>>> emache
       int a=noofstocks;
         if (portfoliostocks.empty()) {
             auto itr = it.second;
-            cout << endl;
-
             for (auto i : itr) {
                 if(a>0)
                 {
@@ -750,7 +826,6 @@ vector<pair<string, double>> fun6(map<string, vector<pair<bool, string>>> emache
                 double returnss = returnsmap[stock];
                 if (c) {
                     portfoliostocks.insert(stock);
-                    cout << "stock: " << stock << " returns : " << returnss << endl;
                     a--;
                     sum+=returnss;
                 }
@@ -760,21 +835,12 @@ vector<pair<string, double>> fun6(map<string, vector<pair<bool, string>>> emache
                     break;
                 }
             }
-
             if(noofstocks>0)
             avaragereturns=sum/noofstocks;
- 
-
-            cout << endl << endl;
-     
-            cout<<"Avereage returns on end of date: "<<future_date<< " is : "<<avaragereturns<<endl;
-            cout << endl << endl;
-            }
-            
-            
+            } 
         else {
             auto itr = it.second;
-            cout << endl;
+         
             set<string> temp;
             for (auto i : itr) {
                 if(a>0)
@@ -785,7 +851,7 @@ vector<pair<string, double>> fun6(map<string, vector<pair<bool, string>>> emache
                 if (portfoliostocks.find(stock) != portfoliostocks.end()) {
                     double returnss = continuedreturnsmap[stock];
                     if (c) {
-                        cout << "stock: " << stock << " returns : " << returnss << endl;
+                       
                         temp.insert(stock);
                         a--;
                          sum+=returnss;
@@ -793,7 +859,7 @@ vector<pair<string, double>> fun6(map<string, vector<pair<bool, string>>> emache
                 } else {
                     double returnss = returnsmap[stock];
                     if (c) {
-                        cout << "stock: " << stock << " returns : " << returnss << endl;
+                   
                         temp.insert(stock);
                         a--;
                          sum+=returnss;
@@ -807,9 +873,6 @@ vector<pair<string, double>> fun6(map<string, vector<pair<bool, string>>> emache
            }
             if(noofstocks>0)
             avaragereturns=sum/noofstocks;
-             cout << endl << endl;
-            cout<<"Average returns on end of date: "<<future_date<< " is : "<<avaragereturns<<endl;
-            cout << endl << endl;
             portfoliostocks = temp;
         }
         if(avaragereturns!=0)
@@ -823,25 +886,330 @@ vector<pair<string, double>> fun6(map<string, vector<pair<bool, string>>> emache
     return answer;
   }
 
-   
-   void printPortfolioReturns(const std::vector<std::pair<std::string, double>>& portfolioreturns, double initialAmount) {
+int findyear(string &date)
+{
+    return stoi(date.substr(6,4));
+}
+
+map<int,vector<double>> printPortfolioReturns(const vector<pair<string, double>>& portfolioreturns,double initialAmount,int month,int year,int endmonth,int endyear,map<pair<int,int>,vector<int>> mappp) {
+    int tradingday=mappp[{year,month}].back();
+    int tradingday2=mappp[{endyear,endmonth}].back();
+    int firstday=mappp[{year,month}].front();
+    map<int,vector<double>> answer;
+    
     double amount = initialAmount;
+     string date = (tradingday < 10 ? "0" : "") + to_string(tradingday) + "-" +
+                       (month < 10 ? "0" : "") + to_string(month) + "-" +
+                       to_string(year);
 
-    std::cout << std::setw(15) << "Date" << std::setw(15) << "Return (%)" << std::setw(20) << "Portfolio Value" << std::endl;
-    std::cout << "-----------------------------------------------------------" << std::endl;
+    string firstdate = (firstday < 10 ? "0" : "") + to_string(firstday) + "-" +
+                       (month < 10 ? "0" : "") + to_string(month) + "-" +
+                       to_string(year);
 
-    for (const auto& entry : portfolioreturns) {
+                       
+    string date2 = to_string(tradingday2) + "-" +
+                       (endmonth < 10 ? "0" : "") + to_string(endmonth) + "-" +
+                       to_string(endyear);
+
+                       cout<<date2<<endl;
+                       int start=0;
+                       for(int k=0;start<portfolioreturns.size();++k)
+                       {
+                        auto entry=portfolioreturns[k];
+                        if(entry.first==date)
+                        break;
+                        else 
+                        start++;
+                       }
+
+                       int end=0;
+                        for(int k=0;end<portfolioreturns.size();++k)
+                       {
+                        auto entry=portfolioreturns[k];
+                        if(entry.first==date2)
+                        break;
+                        else 
+                        end++;
+                       }
+                       cout<<start<<" "<<end<<endl;
+                       if(start>end)
+                       {
+                        cout<<"Please enter the start date lesser than end..."<<endl;
+                        return answer;
+                       }                     
+
+    cout<<"you have started investing on : "<<firstdate<<endl;         
+
+    cout << setw(15) << "Date" << setw(15) << "Return (%)" << setw(20) << "Portfolio Value" << endl;
+    cout << "-----------------------------------------------------------" << endl;
+
+    for (int j=start;j<end;++j) {
+        auto entry=portfolioreturns[j];
         double returnPercentage = entry.second;
         amount += (amount * returnPercentage / 100.0);
-
+        int date=findyear(entry.first);
+        answer[date].pb(amount);
         std::cout << std::setw(15) << entry.first 
                   << std::setw(15) << returnPercentage 
                   << std::setw(20) << amount 
                   << std::endl;
     }
+    return answer;
 }
 
 
+void writePortfolioReturnsToCSV(const std::vector<std::pair<std::string, double>>& portfolioreturns, double initialAmount, int month, int year, int endmonth, int endyear, map<pair<int, int>, vector<int>> mappp, int numOfStocks) {
+    int tradingday = mappp[{year, month}].back();
+    int tradingday2 = mappp[{endyear, endmonth}].back();
+    int firstday = mappp[{year, month}].front();
+
+    double amount = initialAmount;
+    string date = (tradingday < 10 ? "0" : "") + to_string(tradingday) + "-" +
+                  (month < 10 ? "0" : "") + to_string(month) + "-" +
+                  to_string(year);
+
+    string firstdate = (firstday < 10 ? "0" : "") + to_string(firstday) + "-" +
+                       (month < 10 ? "0" : "") + to_string(month) + "-" +
+                       to_string(year);
+
+    string date2 = to_string(tradingday2) + "-" +
+                   (endmonth < 10 ? "0" : "") + to_string(endmonth) + "-" +
+                   to_string(endyear);
+
+    string filename = "portfolio_returns_" + firstdate + "-" + to_string(numOfStocks) + "-" + date2 + ".csv";
+    string filenameforpowerbi="portfolio_returns.csv";
+
+    int start = 0;
+    for (int k = 0; start < portfolioreturns.size(); ++k) {
+        auto entry = portfolioreturns[k];
+        if (entry.first == date)
+            break;
+        else
+            start++;
+    }
+
+    int end = 0;
+    for (int k = 0; end < portfolioreturns.size(); ++k) {
+        auto entry = portfolioreturns[k];
+        if (entry.first == date2)
+            break;
+        else
+            end++;
+    }
+    if (start > end) {
+        cout << "Please enter the start date less than the end..." << endl;
+        return;
+    }
+
+    cout<<"enter 1 to create a differint csv file\nenter 2 to update portfolio_returns file for powerbi"<<endl;
+    int n=-1;
+    cin>>n;
+    if(n!=1&&n!=2)
+    {
+    cout<<"incorrect input"<<endl;
+    return;
+    }
+
+    else if(n==1)
+    {
+    ofstream outFile(filename);
+    outFile << "Your initial investment is: " << initialAmount << ",,,\n";
+    outFile << "Date,Return (%),Portfolio Value\n";
+
+    for (int j = start; j < end; ++j) {
+        auto entry = portfolioreturns[j];
+        double returnPercentage = entry.second;
+        amount += (amount * returnPercentage / 100.0);
+        outFile << entry.first << "," 
+                << returnPercentage << "," 
+                << amount << "\n";
+    }
+    outFile.close();
+
+    cout << "CSV file '" << filename << "' created successfully." << endl;
+
+    }
+
+    else
+    {
+    ofstream outFile(filenameforpowerbi);
+    outFile << "Your initial investment is: " << initialAmount << ",,,\n";
+    outFile << "Date,Return (%),Portfolio Value\n";
+
+    for (int j = start; j < end; ++j) {
+        auto entry = portfolioreturns[j];
+        double returnPercentage = entry.second;
+        amount += (amount * returnPercentage / 100.0);
+        outFile << entry.first << "," 
+                << returnPercentage << "," 
+                << amount << "\n";
+    }
+    outFile.close();
+
+    cout << "CSV file '" << filenameforpowerbi << "' updated successfully." << endl;
+    }
+}
+
+void readAndProcessFile(const string& filePath, vector<Stock>& stocks, int noofstocks, int noofdatapoints) {
+    ifstream file(filePath);
+    string line, date;
+
+    if (!file.is_open()) {
+        cerr << "Error opening file." << endl;
+        return;
+    }
+
+    getline(file, line);
+    stringstream headerStream(line);
+    vector<string> headers;
+    string header;
+    size_t stockCount = 0;
+
+    while (getline(headerStream, header, ',') && stockCount < noofstocks) {
+        headers.push_back(header);
+        stockCount++;
+    }
+
+    vector<Stock> tempStocks;
+    for (size_t i = 1; i < headers.size(); ++i) {
+        tempStocks.emplace_back(headers[i]);
+    }
+
+    size_t rowCount = 0;
+    while (getline(file, line) && rowCount < noofdatapoints) {
+        stringstream ss(line);
+        if (getline(ss, date, ',')) {
+            for (size_t i = 1; i < headers.size(); ++i) {
+                string priceStr;
+                if (getline(ss, priceStr, ',')) {
+                    priceStr.erase(remove(priceStr.begin(), priceStr.end(), ' '), priceStr.end());
+                    if (!priceStr.empty() && isdigit(priceStr[0])) {
+                        try {
+                            double price = stod(priceStr);
+                            tempStocks[i - 1].addPrice(date, price);
+                        } catch (const exception& e) {
+                            cerr << "Error converting price for date: " << date << " - " << e.what() << endl;
+                        }
+                    } else {
+                        cerr << "Invalid price or empty line for date: " << date << endl;
+                    }
+                } else {
+                    cerr << "Error extracting price for date: " << date << endl;
+                }
+            }
+            rowCount++;
+        } else {
+            cerr << "Error extracting date from line: " << line << endl;
+        }
+    }
+
+    for (size_t i = 0; i < tempStocks.size(); ++i) {
+       cout << "Merging stock " << i << endl;
+       int a= stocks[i].merge(tempStocks[i]); 
+       if(a==-1)
+       {
+        cout<<"problem with stock: "<<tempStocks[i].name<<endl;
+       }
+    }
+    file.close();
+}
+
+
+
+
+
+void readAndProcessFile2(const string& filePath, vector<Stock>& stocks, int noofstocks, int noofdatapoints, size_t startRow) {
+    ifstream file(filePath);
+    string line, date;
+
+    if (!file.is_open()) {
+        return;
+    }
+    getline(file, line);
+    stringstream headerStream(line);
+    vector<string> headers;
+    string header;
+    size_t stockCount = 0;
+
+    while (getline(headerStream, header, ',') && stockCount < noofstocks) {
+        headers.push_back(header);
+        stockCount++;
+    }
+
+    stocks.clear();
+    for (size_t i = 1; i < headers.size(); ++i) {
+        stocks.emplace_back(headers[i]);
+    }
+
+    size_t rowCount = 0;
+    while (rowCount < startRow && getline(file, line)) {
+        rowCount++;
+    }
+    while (getline(file, line) && rowCount < startRow + noofdatapoints) {
+        stringstream ss(line);
+        
+        if (getline(ss, date, ',')) {
+            for (size_t i = 1; i < headers.size(); ++i) {
+                string volumeStr;
+                if (getline(ss, volumeStr, ',')) {
+                    volumeStr.erase(remove(volumeStr.begin(), volumeStr.end(), ' '), volumeStr.end());
+
+                    long long volume = 0;
+                    if (!volumeStr.empty()) {
+                        try {
+                            volume = stoll(volumeStr);
+                        } catch (const exception&) {
+                        
+                        }
+                    }
+                    stocks[i - 1].addVolume(date, volume);
+                }
+            }
+            rowCount++;
+        }
+    }
+
+    file.close();
+}
+
+
+
+map<int,vector<double>> fun7(vector<pair<string, double>> portfolioreturns)
+{
+    map<int,vector<double>> ans;
+    for(auto it:portfolioreturns)
+    {
+        string date=it.first;
+        double returns=it.second;
+        int year=findyear(date);
+        ans[year].pb(returns);
+    }
+    return ans;
+}
+
+
+map<int, double> calculateYearlyMDD(const map<int, vector<double>>& yearlyReturns) {
+    map<int, double> yearlyMDD;
+    for (const auto& entry : yearlyReturns) {
+        int year = entry.first;
+        double peak = -99999.0; 
+        double currentMDD = 0.0; 
+        const vector<double>& monthlyReturns = entry.second;
+        for (size_t i = 0; i < monthlyReturns.size(); i++) {
+            double NAV = monthlyReturns[i];
+            if (NAV > peak) {
+                peak = NAV;
+            }
+            double DD =  100*(peak - NAV) / peak;
+            if (DD > currentMDD) {
+                currentMDD = DD;
+            }
+        }
+        yearlyMDD[year] = currentMDD;
+    }
+
+    return yearlyMDD;
+}
 
 
 
@@ -850,103 +1218,56 @@ int main() {
     vector<Stock> stocks;
    
     string filePath = "E:/Desktop/algotrading/Nifty 500 v1 Price.csv";
+    string filePath2="E:/Desktop/algotrading/stock_volumes_transformed_updated_500.csv";
 
-     int noofstocks;
+     int noofstock;
     int noofdatapoints;
     cout<<"Enter no of Stocks you have in your csv file:"<<endl;
-     cin>>noofstocks;
+     cin>>noofstock;
     cout<<"Enter no of Data points you have :"<<endl;
     cin>>noofdatapoints;
      cout<<"reading data from csv file..."<<endl;
-    future<void> fileProcessingFuture = async(launch::async, readAndProcessFile, filePath, ref(stocks),noofstocks+1,noofdatapoints+1);
+
+    cout<<"enter start row for voulme data"<<endl;
+
+    size_t start_row;
+    cin>>start_row;
+     future<void> fileProcessingFuture = async(launch::async, readAndProcessFile2, filePath2, ref(stocks),noofstock+1,noofdatapoints,start_row);
     fileProcessingFuture.get();
+   
+
+
+    future<void> fileProcessingFuture2 = async(launch::async, readAndProcessFile, filePath, ref(stocks),noofstock+1,noofdatapoints);
+    fileProcessingFuture2.get(); 
+    
+    
     int period;
-    double c;
+    int athwindow;
     cout << "Enter the period of  EMA:" << endl;
     cin >> period;
-    int ath_period;
-    cout<<"Enter the period of  ATH:(around 250 for a year)" << endl;
-    cin>>ath_period;
-    cout << "Enter the criteria for ATH and EMA relation (no between 50-90):" << endl;
-    cin >> c;
+    cout<<"Enter the window size for ATH"<<endl;
+    cin>>athwindow;
+
+
+
     vector<future<void>> futures;
     for (auto& stock : stocks) {
-        futures.push_back(async(launch::async, [&stock, period,ath_period, c]() {
+        futures.push_back(async(launch::async, [&stock, period,athwindow]() {
             stock.calculateEMAForStock(period);
-            stock.calculateATHForStock(ath_period);
+            stock.calculateATHForStock(athwindow);
             stock.return1Month();
             stock.return12months();
-            stock.IsEMAcriteria(c);
+            stock.testfun();
+
         }));
     }
     for (auto& fut : futures) {
         fut.get();
     }
-    
-
-    cout << "Enter the stock name:" << endl;
-    string name;
-    cin >> name;
-    int tar = -1;
-    for (int i = 0; i < stocks.size(); ++i) {
-        if (toLower(stocks[i].name) == toLower(name)) {
-            tar = i;
-            break;
-        }
-    }
-    cout << tar << endl;
-    if (tar == -1) {
-        cout << "Could not find the stock" << endl;
-    } else {
-        if (!stocks[tar].ema.empty() && !stocks[tar].ath.empty() && !stocks[tar].isgood.empty()) {
-            cout << "EMA and ATH for stock " << stocks[tar].name << " for the period of " << period << " days and "<< ath_period<<" days respectivly are:" << endl;
-            cout << setw(5) << "Row" << setw(12) << "Date" << setw(15) << "EMA" << setw(15) << "ATH" << setw(10) << "Is Good" << setw(40) << "12M returns as on 1st of each month" << endl;
-            size_t maxSize = max({stocks[tar].ema.size(), stocks[tar].ath.size(), stocks[tar].isgood.size()});
-            for (size_t i = 0; i < maxSize; ++i) {
-                cout << setw(5) << i + 2 << setw(12);
-                if (i < stocks[tar].ema.size()) {
-                    cout << stocks[tar].ema[i].first;
-                } else {
-                    cout << " ";
-                }
-                cout << setw(15);
-                if (i < stocks[tar].ema.size()) {
-                    cout << stocks[tar].ema[i].second;
-                } else {
-                    cout << " ";
-                }
-                cout << setw(15);
-                if (i < stocks[tar].ath.size()) {
-                    cout << stocks[tar].ath[i].second;
-                } else {
-                    cout << " ";
-                }
-                cout << setw(10);
-                if (i < stocks[tar].isgood.size()) {
-                    cout << (stocks[tar].isgood[i].second ? "true" : "false");
-                } else {
-                    cout << " ";
-                }
-                cout << setw(40);
-                if (i < stocks[tar].returns12M.size()) {
-                    if (stocks[tar].returns12M[i].second != -1) {
-                        cout << stocks[tar].returns12M[i].second * 100;
-                    } else {
-                        cout << "----";
-                    }
-                } else {
-                    cout << " ";
-                }
-                cout << endl;
-            }
-        } else {
-            cout << "No EMA, ATH, or Is Good data available." << endl;
-        }
-
-        cout<<endl;
+cout<<"calculations completed"<<endl;
+        
    vector<vector<pair<double,pair<string,string>>>> datafor12months;
    vector<vector<pair<pair<double,double>,pair<string,string>>>> datafor1month;
-
     for(auto it: stocks)
     {
         vector<pair<double,pair<string,string>>> temp=monthreturns12forastock(it);
@@ -955,31 +1276,6 @@ int main() {
         datafor1month.pb(temp2);
     }
 
-    cout << "Enter the stock name:" << endl;
-    string name;
-    cin >> name;
-    int target = -1;
-    for (int i = 0; i < stocks.size(); ++i) {
-        if (toLower(stocks[i].name) == toLower(name)) {
-            target = i;
-            break;
-        }
-    }
-    cout << target << endl;
-    if (target == -1) {
-        cout << "Could not find the stock" << endl;
-    } 
-    else{
-        cout<<"entred here"<<endl;
-             for (auto &entry : datafor12months[target]) {
-        cout << "Returns 12 M: " << entry.first*100 << " Date: " << entry.second.first << " Stock: " << entry.second.second << endl;
-             }
-          for (auto &entry : datafor1month[target]) {
-        cout << "Returns 1 M on first : " << entry.first.first<<" Returns 1M ON LAST : "<<entry.first.second << " Date: " << entry.second.first << " Stock: " << entry.second.second << endl;
-    }
-    }
-
-//mapping of dates
    vector<pair<string, double>> p = stocks[0].prices;
    map<string, int> dateToIndexMap;
     vector<string> dates;  
@@ -988,9 +1284,7 @@ int main() {
         dateToIndexMap[date] = i;
         dates.pb(p[i].first);
     }
-    map<pair<int,int>,vector<int>> mappp = createDateMap(dates);
-
-
+   map<pair<int,int>,vector<int>> mappp = createDateMap(dates);
    map<string,vector<pair<double,string>>> datewisedatafor12monthsreturns;
    map<string,vector<pair<pair<double,double>,string>>> datewisedatafor1monthsreturns;
    map<string,vector<pair<double,string>>> sorteddatewisedatafor12monthsreturns;
@@ -1003,71 +1297,112 @@ int main() {
       int percent;
         cout<<"enter how much percent of top stocks do you want:"<<endl;
         cin>>percent;
-
+         
         map<string, vector<pair<double, string>>> topperccentstocksdatewise;
-    
- topperccentstocksdatewise = fun3(percent, sorteddatewisedatafor12monthsreturns);
-  for (const auto& entry : topperccentstocksdatewise) {
-        cout << "Date: " << entry.first << "\n";
-        for (int i = 0; i < entry.second.size(); ++i) {
-            auto pair = entry.second[i];
-            cout << "  Stock: " << setw(60) << left << pair.second 
-                 << "Returns: " << pair.first << "\n";
+        topperccentstocksdatewise = fun3(percent, sorteddatewisedatafor12monthsreturns);
+        int criteriaforath;
+        cout<<"enter the criteria for ath:"<<endl;
+        cin>>criteriaforath;
+        emacheck = fun4(topperccentstocksdatewise, stocks,criteriaforath); 
+       
+int entryy = 0; 
+while (entryy != 2) {
+    cout << "Press 1 and enter to create a portfolio of stocks:" << endl
+         << "Press 2 and enter to exit" << endl;
+
+    cin >> entryy;
+         
+    switch (entryy) {
+        case 1: {
+            int noofstocks;
+            cout << "Enter the number of Stocks you want in your Portfolio:" << endl;
+            cin >> noofstocks;
+            cout<<"please enter the start date:"<<endl;
+            int month,year;
+           cout<<"enter start year"<<endl;
+            cin>>year;
+            cout<<"enter month"<<endl;
+            cin>>month;
+            int endmonth,endyear;
+            cout<<"enter end year:"<<endl;
+            cin>>endyear;
+            cout<<"enter end month:"<<endl;
+            cin>>endmonth;
+            if (noofstocks <= 0) {
+                cout << "Invalid number of stocks. Please enter a positive integer." << endl;
+                break;
+            }
+            vector<pair<string, double>> portfolioreturns = fun6(emacheck, datewisedatafor1monthsreturns, noofstocks, mappp);
+            map<int,vector<double>> mapp=fun7(portfolioreturns);
+
+            map<int,double> avarageannualrateofreturn;
+            for (auto entry: mapp)
+            {
+                int year=entry.first;
+                vector<double> returnss=entry.second;
+                double sum=accumulate(all(returnss),0);
+                double avg=sum/returnss.size();
+                avarageannualrateofreturn[year]=avg;
+            }
+
+            double initialAmount;
+            cout << "Enter how much money you want to invest: " << endl;
+            cin >> initialAmount;
+
+            if (initialAmount <= 0) {
+                cout << "Invalid investment amount. Please enter a positive number." << endl;
+                break;
+            }
+            cout << "Your initial investment money is: " << initialAmount << endl << endl;
+        map<int,vector<double>> mapppp;
+           mapppp= printPortfolioReturns(portfolioreturns, initialAmount,month,year,endmonth,endyear,mappp);
+           cout<<endl<<endl;
+           
+           map<int, double> MDDResults = calculateYearlyMDD(mapppp);
+             for(auto it: MDDResults){
+                cout<<"YEAR: "<<it.first<<" MDD: "<<it.second<<endl;
+                    }
+                    cout<<endl<<endl;
+                    map<int,double> calmerratio;
+                    for(auto entry:MDDResults)
+                    {
+                        int year=entry.first;
+                        double mdd=entry.second;
+                        double avgreturns=avarageannualrateofreturn[year];
+                        if(mdd==0)
+                        {
+                            calmerratio[year]=INT_MAX;
+                            continue;
+                        }
+                        double ratio=avgreturns/mdd;
+                        calmerratio[year]=ratio;
+                    }
+
+                     for(auto it: calmerratio){
+                cout<<"YEAR: "<<it.first<<" Calmer Ratio: "<<it.second<<endl;
+                    }
+                    
+               cout<<"do you want to create a csv file ? write 'yes' to create 'no' to not.... "<<endl;
+            string cond;
+            cin>>cond;
+
+              if(toLower(cond)=="yes")
+            {
+          string filepath = "E:/Desktop/algotrading/portfolios";
+          writePortfolioReturnsToCSV(portfolioreturns, initialAmount, month, year, endmonth, endyear, mappp, noofstocks);
+            }
+            break;
         }
-        cout << endl;
-    }
-
-    cout<<endl<<endl<<endl;
-     emacheck = fun4(topperccentstocksdatewise, stocks);
-
-      cout<<"entered into"<<endl;
-    for (const auto& entry : emacheck) {
-        cout << "Date: " << entry.first << endl;
-        for (int i = 0; i < entry.second.size(); ++i) {
-            auto pair = entry.second[i];
-            cout << "  Stock: " << setw(60) << left << pair.second 
-                 << "Decision: " << (pair.first ? "TRUE" : "FALSE") << "\n";
+        case 2: {
+            cout << "Exiting...." << endl;
+            break;
         }
-        cout << endl;
+        default: {
+            cout << "Invalid input. Please enter 1 or 2." << endl;
+            break;
+        }
     }
-  
-    // for (const auto& monthData : datafor1month) {
-    //     cout << "Month Data:" << endl;
-    //     for (const auto& entry : monthData) {
-    //         double value = entry.first;
-    //         string startDate = entry.second.first;
-    //         string endDate = entry.second.second;
-
-    //         cout << "Returns: " << value*100 << ", Start Date: " << startDate << ", stock: " << endDate << endl;
-    //     }
-    //     cout << endl; // Separate each month's data with a newline
-    // }
-
-//  for (const auto& entry : datewisedatafor1monthsreturns) {
-//         const string& date = entry.first;
-//         const vector<pair<double, string>>& returnsAndStocks = entry.second;
-//         cout << "Date: " << date << endl;
-//         for (const auto& pair : returnsAndStocks) {
-//             double returns = pair.first;
-//             const string& stock = pair.second;
-
-//             cout << "  Returns: " << returns << ", Stock: " << stock << endl;
-//         }
-//         cout << endl; 
-//     }
-     int noofstocks;
-     cout<<"Enter the no of Stocks you Want in Your Portfolio:"<<endl;
-     cin>>noofstocks;
-     
-     vector<pair<string,double>> portfolioreturns=fun6(emacheck,datewisedatafor1monthsreturns,noofstocks,mappp);  
-
-     double initialAmount;
-     cout<<"enter how much money you want to invest: "<<endl;
-     cin>>initialAmount;
-
-     cout<<"your initial investment money is: "<<initialAmount<<endl<<endl;
-     printPortfolioReturns(portfolioreturns, initialAmount);
-     }
+}
     return 0;
 }
 
