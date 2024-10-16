@@ -1,12 +1,13 @@
-import requests
 import pandas as pd
 from indiafactorlibrary import IndiaFactorLibrary
 import warnings
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 import statsmodels.api as sm
-
+import matplotlib.pyplot as plt
+import seaborn as sns
 warnings.filterwarnings("ignore")
+
 
 class GetNAVSeriesAndFactorData:
     def __init__(self):
@@ -17,43 +18,27 @@ class GetNAVSeriesAndFactorData:
         self.nav_series_yearly = None
         self.dataset = None  
 
-    def fetch_nav_data(self, fund_id):
-        url = f"https://api.mfapi.in/mf/{fund_id}"
+    def read_nav_data_from_csv(self, file_path):
         try:
-            response = requests.get(url)
-            response.raise_for_status()
-            data = response.json()
-            dates = [entry['date'] for entry in data['data']]
-            navs = [float(entry['nav']) for entry in data['data']]
-            self.nav_series = pd.Series(navs, index=pd.to_datetime(dates, format='%d-%m-%Y'))
+            df = pd.read_csv(file_path)
+            
+            if 'date' not in df.columns or 'returns' not in df.columns:
+                raise ValueError("CSV file must have 'date' and 'returns' columns")
+            df['date'] = pd.to_datetime(df['date'])
+            df.set_index('date', inplace=True)
+         
+            self.nav_series = df['returns']
+            
+            print("NAV data loaded successfully from CSV.")
             return self.nav_series
-        except requests.exceptions.RequestException as e:
-            print(f"Error fetching NAV data: {e}")
-
-
-
+        except Exception as e:
+            print(f"Error reading NAV data from CSV: {e}")
 
     def search_fund(self):
-        query = input("Enter fund name or keyword to search: ").strip()
-        url = f"https://api.mfapi.in/mf/search?q={query}"
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
-            funds = response.json()
-
-            if funds:
-                print(f"\nSearch Results for '{query}':")
-                for fund in funds:
-                    print(f"ID: {fund['schemeCode']} - Name: {fund['schemeName']}")
-
-                self.fund_id = input("\nEnter the fund ID to fetch NAV data: ").strip()
-                self.fetch_nav_data(self.fund_id)
-                print("NAV Series:")
-                print(self.nav_series)
-            else:
-                print("No matching funds found.")
-        except requests.exceptions.RequestException as e:
-            print(f"Error fetching data: {e}")
+        file_path = input("Enter the path to your CSV file: ").strip()
+        self.read_nav_data_from_csv(file_path)
+        print("NAV Series:")
+        print(self.nav_series)
 
     def print_dataset_description(self):
         if not self.dataset or 'DESCR' not in self.dataset:
@@ -69,7 +54,21 @@ class GetNAVSeriesAndFactorData:
            
             if any(f"{i} :" in part for i in range(10)): 
                 print(part.strip())
-        
+
+    def plot_correlation_matrix(self, df):
+        corr_matrix = df.corr()  
+        fig, ax = plt.subplots(figsize=(15, 10)) 
+        sns.heatmap(
+            corr_matrix, 
+            annot=True,         
+            linewidths=0.5,     
+            fmt=".2f",           
+            cmap="YlGnBu",       
+            square=True,       
+            cbar_kws={"shrink": .8} 
+        )
+        ax.set_title('Correlation Matrix', fontsize=16)
+        plt.show()
 
     def print_available_factors(self):
         try:
@@ -94,12 +93,11 @@ class GetNAVSeriesAndFactorData:
         try:
             self.dataset = self.ifl.read(factor_id) 
             print("Dataset loaded successfully.")
-            self.print_dataset_description();  
+            self.print_dataset_description()
         except Exception as e:
             print(f"Error displaying the dataset: {e}")
 
     def monthly_returns(self, nav_series_new=None):
-
         if nav_series_new:
             nav_series = nav_series_new
         else:
@@ -115,7 +113,7 @@ class GetNAVSeriesAndFactorData:
         monthly_sums = ratios.groupby(ratios.index.to_period('M')).sum()
         self.nav_series_monthly = monthly_sums
 
-    def set_monthly_returns_in_data(self,index=None):
+    def set_monthly_returns_in_data(self, index=None):
         if index is None:
             print("Index must be provided to access the dataset.")
             return
@@ -124,7 +122,6 @@ class GetNAVSeriesAndFactorData:
         if data is None:
             print(f"No data found for index: {index}")
             return
-        
         data['monthly_returns'] = data.index.to_period('M').map(self.nav_series_monthly) * 100
         data = data.dropna()
         self.dataset[index] = data
@@ -170,7 +167,6 @@ class GetNAVSeriesAndFactorData:
             key, rest = line.split(':', 1)
             key = int(key.strip())
             parts = rest.strip().split('--')
-            # Extracting the description and type
             desc = parts[0].strip()
             descs[desc] = parts[1].strip().split()[0].lower() if len(parts) > 1 else 'unknown'
 
@@ -189,20 +185,18 @@ class GetNAVSeriesAndFactorData:
         options_dict = self.parse_options(descr_parts[-1])
         num_options = len(options_dict)
         for option in options_dict:
-                if len(self.dataset[option]) < 50:
-                    options_dict[option]['type'] = 'annually'
-                else:
-                    options_dict[option]['type'] = 'monthly'
+            if len(self.dataset[option]) < 50:
+                options_dict[option]['type'] = 'annually'
+            else:
+                options_dict[option]['type'] = 'monthly'
         print(num_options)
         while True:
             print(f"Select which factor dataframe you want to choose (0 to {num_options - 1}, -1 to exit):")
             try:
                 user_input = int(input(f"Enter a number between 0 and {num_options - 1}: "))
-
                 if user_input == -1:
                     print("Exiting selection.")
                     return
-
                 if user_input < 0 or user_input > num_options:
                     print(f"Invalid input. Please enter a number between 0 and {num_options - 1}, or -1 to exit.")
                     continue
@@ -217,9 +211,9 @@ class GetNAVSeriesAndFactorData:
                     self.yearly_returns(index=user_input)
                 print(self.dataset[user_input])
                 if options_dict[user_input]['type'] == 'monthly':
-                    self.perform_multiregression(dataframe=self.dataset[user_input],target_column="monthly_returns")
+                    self.perform_multiregression(dataframe=self.dataset[user_input], target_column="monthly_returns")
                 else:
-                    self.perform_multiregression(dataframe=self.dataset[user_input],target_column="yearly_return")
+                    self.perform_multiregression(dataframe=self.dataset[user_input], target_column="yearly_return")
               
                 print("reached")
                 return
@@ -228,48 +222,29 @@ class GetNAVSeriesAndFactorData:
                 print(f"Invalid input. Please enter a valid number. You entered: '{user_input}'")
                 return
 
-
-
-    def perform_multiregression(self,dataframe, target_column):
-        print('\n\n1\n\n')
+    def perform_multiregression(self, dataframe, target_column):
         if target_column not in dataframe.columns:
             raise ValueError(f"'{target_column}' not found in DataFrame columns.")
-        print('\n\n2\n\n')
-        # Step 1: Display available columns (excluding the target column)
         available_columns = [col for col in dataframe.columns if col != target_column]
         print("Available columns for regression:")
         print(available_columns)
-     
-        # Step 2: User selects independent columns
         selected_columns = input("Enter the predictor columns separated by commas: ").split(',')
         selected_columns = [col.strip() for col in selected_columns]
-
-        # Validate selected columns
         for col in selected_columns:
             if col not in available_columns:
                 raise ValueError(f"Column '{col}' is not available in the DataFrame.")
-
-        # Step 3: Prepare X (independent variables) and y (dependent variable)
         X = dataframe[selected_columns]
         y = dataframe[target_column]
-
-        # Step 4: Perform multivariate regression using statsmodels
-        X = sm.add_constant(X)  # Adds a constant term to the model (intercept)
-        model = sm.OLS(y, X).fit()
-
-        # Step 5: Output model summary
+        X = sm.add_constant(X) 
+        model = sm.OLS(y, X).fit()       
         print("\nRegression Summary:")
         print(model.summary())
-
-        # Optionally, use scikit-learn to provide R² score
         model_sklearn = LinearRegression()
         model_sklearn.fit(X, y)
         y_pred = model_sklearn.predict(X)
         print(f"\nR² Score: {r2_score(y, y_pred)}")
-
-
-
-
+        self.plot_correlation_matrix(dataframe)
+        return
 
 
 if __name__ == "__main__":
